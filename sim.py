@@ -36,9 +36,10 @@
 
 import numpy as np
 from scipy.optimize import fsolve
+from model import Model
 
 
-class SIM:
+class SIM(Model):
     def __init__(self, c0, c1, theta, g0, W):
         # Exogenous constants
         self.c0 = c0  # Consumption from disposable income
