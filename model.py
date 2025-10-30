@@ -24,10 +24,21 @@ class Model(ABC):
         """
         pass
 
+    @abstractmethod
+    def update(self):
+        """Update model state by one time period.
+
+        This method should:
+        - Solve the system of equations for the current period
+        - Update internal state with new values
+        """
+        pass
+
     def simulate(self, periods):
         """Run the model for multiple periods.
 
-        Default implementation that subclasses can override.
+        Default implementation calls update() for each period.
+        Subclasses can override this method for custom simulation logic.
 
         Args:
             periods: Number of time periods to simulate
