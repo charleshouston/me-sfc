@@ -145,3 +145,14 @@ if __name__ == "__main__":
         print(f"Model has converged to steady state (ΔY = {y_change:.4f})")
     else:
         print(f"Model still adjusting (ΔY = {y_change:.4f})")
+
+    # Demonstrate plotting functionality
+    print("\nGenerating plots...")
+    print("Close the plot window to continue.")
+
+    # Display plots interactively
+    model.plot()
+
+    # Also save to file
+    model.plot(save_path="figures/sim_baseline.png", show=False)
+    print("Plots saved to figures/sim_baseline.png")
