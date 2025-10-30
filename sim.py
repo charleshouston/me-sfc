@@ -77,3 +77,37 @@ class SIM:
 
         Y = fsolve(f, initial_guess)
         self.x.append(Y)
+
+    def simulate(self, periods):
+        """Run the model for multiple periods.
+
+        Args:
+            periods: Number of time periods to simulate
+
+        Returns:
+            Dictionary of time series for all variables
+        """
+        for _ in range(periods):
+            self.update()
+        return self.get_results()
+
+    def get_results(self):
+        """Return results as a dictionary of time series.
+
+        Returns:
+            Dictionary mapping variable names to numpy arrays of their values over time
+        """
+        arr = np.array(self.x[1:])  # Skip initial zeros
+        return {
+            'Y': arr[:, 0],    # National income
+            'YD': arr[:, 1],   # Disposable income
+            'T_d': arr[:, 2],  # Tax demand
+            'T_s': arr[:, 3],  # Tax supply
+            'H_s': arr[:, 4],  # Government money supply
+            'H_h': arr[:, 5],  # Household money holdings
+            'G_s': arr[:, 6],  # Government spending supply
+            'C_s': arr[:, 7],  # Consumption supply
+            'C_d': arr[:, 8],  # Consumption demand
+            'N_s': arr[:, 9],  # Employment supply
+            'N_d': arr[:, 10]  # Employment demand
+        }
