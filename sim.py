@@ -25,7 +25,7 @@
 # \Delta H_s = H_s - H_s[-1] = G_d - T_d
 # H_s = H_s[-1] + G_d - T_d
 
-# Budget contraint of households:
+# Budget constraint of households:
 # \Delta H_h = H_h - H_h[-1] = YD - C_d
 # H_h = H_h[-1] + YD - C_d
 
@@ -111,3 +111,36 @@ class SIM:
             'N_s': arr[:, 9],  # Employment supply
             'N_d': arr[:, 10]  # Employment demand
         }
+
+
+if __name__ == "__main__":
+    # Standard calibration from Godley & Lavoie
+    # c0: marginal propensity to consume out of income
+    # c1: propensity to consume out of wealth
+    # theta: tax rate
+    # g0: government spending
+    # W: wage rate
+    model = SIM(c0=0.6, c1=0.4, theta=0.2, g0=20, W=1)
+
+    # Run simulation for 100 periods
+    results = model.simulate(periods=100)
+
+    # Display final period results
+    print("SIM Model - Final Period Results (t=100)")
+    print("=" * 45)
+    print(f"National Income (Y):       {results['Y'][-1]:>10.2f}")
+    print(f"Disposable Income (YD):    {results['YD'][-1]:>10.2f}")
+    print(f"Consumption (C):           {results['C_d'][-1]:>10.2f}")
+    print(f"Government Spending (G):   {results['G_s'][-1]:>10.2f}")
+    print(f"Taxes (T):                 {results['T_d'][-1]:>10.2f}")
+    print(f"Household Wealth (H_h):    {results['H_h'][-1]:>10.2f}")
+    print(f"Government Debt (H_s):     {results['H_s'][-1]:>10.2f}")
+    print(f"Employment (N):            {results['N_d'][-1]:>10.2f}")
+    print()
+
+    # Check if model has reached steady state
+    y_change = abs(results['Y'][-1] - results['Y'][-2])
+    if y_change < 0.01:
+        print(f"Model has converged to steady state (ΔY = {y_change:.4f})")
+    else:
+        print(f"Model still adjusting (ΔY = {y_change:.4f})")
