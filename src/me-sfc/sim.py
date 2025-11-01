@@ -4,7 +4,6 @@
 import numpy as np
 import pandas as pd
 from collections import namedtuple
-from scipy.optimize import fsolve
 from model import Model
 
 
@@ -79,16 +78,6 @@ class SIM(Model):
         eq11 = current.N_d - (current.Y / self.W)
 
         return [eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11]
-
-    def update(self):
-        """Update model state by one time period.
-
-        Override base class to convert solution back to State namedtuple.
-        """
-        initial_guess = self.x[-1]
-        solution = fsolve(self._equations, initial_guess)
-        # Convert solution array back to named tuple for readable storage
-        self.x.append(self.State(*solution))
 
     def get_results(self):
         """Return results as a pandas DataFrame for analysis.

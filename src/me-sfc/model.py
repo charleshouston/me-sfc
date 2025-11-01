@@ -15,18 +15,27 @@ class Model(ABC):
     - _equations(x): Define the system of equations as residuals
     - get_results(): Return pandas DataFrame of time series data
 
-    Recommended pattern (for performance + readability):
-    - Store state as list of namedtuples during simulation (fast)
-    - Convert to DataFrame in get_results() for analysis (convenient)
-    - Example:
-        State = namedtuple('State', ['Y', 'C', 'I', ...])
-        self.x = [State(*np.zeros(n))]  # Initialize
+    Subclasses must define:
+    - State: Class-level namedtuple defining the model's state structure
+    - self.x: List initialized with State namedtuples
 
-    Subclasses must initialize:
-    - self.x: List of solution vectors (namedtuples or arrays)
+    Example:
+        class YourModel(Model):
+            State = namedtuple('State', ['Y', 'C', 'I', ...])
+
+            def __init__(self, ...):
+                self.x = [self.State(*np.zeros(n))]
+
+            def _equations(self, x):
+                current = self.State(*x)
+                prev = self.x[-1]
+                # Use current.Y, prev.C, etc.
+
+            def get_results(self):
+                return pd.DataFrame([s._asdict() for s in self.x[1:]])
 
     The base class provides:
-    - update(): Solves equations and updates state
+    - update(): Solves equations and converts solution to State namedtuple
     - plot(): Visualize results with automatic subplot layout
     - simulate(): Default implementation (can be overridden)
     """
@@ -61,10 +70,13 @@ class Model(ABC):
 
         Solves the system of equations using the previous period's solution
         as the initial guess, then appends the new solution to state history.
+
+        Assumes subclass defines self.State namedtuple for the hybrid pattern.
         """
         initial_guess = self.x[-1]
         solution = fsolve(self._equations, initial_guess)
-        self.x.append(solution)
+        # Convert solution to State namedtuple
+        self.x.append(self.State(*solution))
 
     def simulate(self, periods):
         """Run the model for multiple periods.
