@@ -5,6 +5,7 @@ import os
 from math import ceil
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
+import pandas as pd
 
 
 class Model(ABC):
@@ -12,10 +13,17 @@ class Model(ABC):
 
     All SFC models should inherit from this class and implement:
     - _equations(x): Define the system of equations as residuals
-    - get_results(): Return dictionary of time series data
+    - get_results(): Return pandas DataFrame of time series data
+
+    Recommended pattern (for performance + readability):
+    - Store state as list of namedtuples during simulation (fast)
+    - Convert to DataFrame in get_results() for analysis (convenient)
+    - Example:
+        State = namedtuple('State', ['Y', 'C', 'I', ...])
+        self.x = [State(*np.zeros(n))]  # Initialize
 
     Subclasses must initialize:
-    - self.x: List of solution vectors (state history)
+    - self.x: List of solution vectors (namedtuples or arrays)
 
     The base class provides:
     - update(): Solves equations and updates state
@@ -38,11 +46,13 @@ class Model(ABC):
 
     @abstractmethod
     def get_results(self):
-        """Return results as a dictionary of time series.
+        """Return results as a pandas DataFrame for analysis.
 
         Returns:
-            Dictionary mapping variable names to numpy arrays of their values over time.
-            Example: {'Y': array([...]), 'C': array([...]), ...}
+            pandas.DataFrame with columns for each variable and rows for each time period.
+
+        Example:
+            DataFrame with columns ['Y', 'C', 'I', ...] where each row is a time period
         """
         pass
 
@@ -83,22 +93,19 @@ class Model(ABC):
                     If None, automatically calculated as (15, 3 * rows)
 
         Raises:
-            ValueError: If results dictionary is empty or contains no time periods
+            ValueError: If results are empty or contains no time periods
         """
-        # Get results from the model
+        # Get results from the model (must be DataFrame)
         results = self.get_results()
 
-        # Validate results
-        if not results:
+        if not isinstance(results, pd.DataFrame):
+            raise TypeError("get_results() must return a pandas DataFrame")
+
+        if results.empty:
             raise ValueError("No results to plot. Run simulate() first.")
 
-        # Check if any data exists
-        first_var = next(iter(results.values()))
-        if len(first_var) == 0:
-            raise ValueError("Results contain no time periods. Run simulate() first.")
-
         # Calculate grid dimensions
-        n_vars = len(results)
+        n_vars = len(results.columns)
         cols = min(3, n_vars)  # Max 3 columns
         rows = ceil(n_vars / cols)
 
@@ -118,14 +125,13 @@ class Model(ABC):
             axes = [[ax] for ax in axes]
 
         # Plot each variable
-        for idx, (var_name, values) in enumerate(results.items()):
+        for idx, var_name in enumerate(results.columns):
             row = idx // cols
             col = idx % cols
             ax = axes[row][col]
 
             # Plot time series
-            periods = range(len(values))
-            ax.plot(periods, values, linewidth=2)
+            ax.plot(results.index, results[var_name], linewidth=2)
             ax.set_title(var_name, fontsize=12, fontweight='bold')
             ax.grid(True, alpha=0.3)
 
