@@ -132,20 +132,20 @@ class Model(ABC):
 
             # Plot time series
             ax.plot(results.index, results[var_name], linewidth=2)
-            ax.set_title(var_name, fontsize=12, fontweight='bold')
+            ax.set_title(var_name, fontsize=12, fontweight="bold")
             ax.grid(True, alpha=0.3)
 
             # Add axis labels only on edge subplots
             if row == rows - 1:  # Bottom row
-                ax.set_xlabel('Period', fontsize=10)
+                ax.set_xlabel("Period", fontsize=10)
             if col == 0:  # Left column
-                ax.set_ylabel('Value', fontsize=10)
+                ax.set_ylabel("Value", fontsize=10)
 
         # Hide unused subplots
         for idx in range(n_vars, rows * cols):
             row = idx // cols
             col = idx % cols
-            axes[row][col].axis('off')
+            axes[row][col].axis("off")
 
         # Adjust layout to prevent overlap
         plt.tight_layout()
@@ -156,7 +156,7 @@ class Model(ABC):
             parent_dir = os.path.dirname(save_path)
             if parent_dir:
                 os.makedirs(parent_dir, exist_ok=True)
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
             print(f"Figure saved to: {save_path}")
 
         # Show if requested

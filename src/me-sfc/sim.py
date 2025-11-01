@@ -2,10 +2,31 @@
 # Simplest Model with Government Money
 
 import numpy as np
+import pandas as pd
+from collections import namedtuple
+from scipy.optimize import fsolve
 from model import Model
 
 
 class SIM(Model):
+    # Define state structure as a namedtuple for readable, fast access
+    State = namedtuple(
+        "State",
+        [
+            "Y",  # National income
+            "YD",  # Disposable income
+            "T_d",  # Tax demand
+            "T_s",  # Tax supply
+            "H_s",  # Government money supply
+            "H_h",  # Household money holdings
+            "G_s",  # Government spending supply
+            "C_s",  # Consumption supply
+            "C_d",  # Consumption demand
+            "N_s",  # Employment supply
+            "N_d",  # Employment demand
+        ],
+    )
+
     def __init__(self, c0, c1, theta, g0, W):
         # Exogenous constants
         self.c0 = c0  # Consumption from disposable income
@@ -14,70 +35,70 @@ class SIM(Model):
         self.g0 = g0  # Government spending
         self.W = W  # Wage rate
 
-        self.x = [np.zeros(11)]  # solution vector
+        # Initialize state history with named tuples for readable access
+        self.x = [self.State(*np.zeros(11))]
 
     def _equations(self, x):
         """System of 11 equations for the SIM model.
 
         Args:
-            x: Solution vector [Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d]
+            x: Solution vector (array) for current period values
 
         Returns:
             List of 11 residuals that should equal zero at equilibrium
         """
-        Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d = x
+        # Unpack current period values (being solved)
+        current = self.State(*x)
 
-        H_h_prev = self.x[-1][5]
-        H_s_prev = self.x[-1][4]
+        # Get previous period values (from history) - no more magic indices!
+        prev = self.x[-1]
 
         # Eqs 1-4: Whatever is demanded is supplied in the period
-        eq1 = C_s - C_d
-        eq2 = G_s - self.g0
-        eq3 = T_s - T_d
-        eq4 = N_s - N_d
+        eq1 = current.C_s - current.C_d
+        eq2 = current.G_s - self.g0
+        eq3 = current.T_s - current.T_d
+        eq4 = current.N_s - current.N_d
 
         # Eq 5: Disposable income is wages minus taxes
-        eq5 = YD - (self.W * N_s - T_s)
+        eq5 = current.YD - (self.W * current.N_s - current.T_s)
 
         # Eq 6: Taxes demanded are a proportion of wages
-        eq6 = T_d - (self.theta * self.W * N_s)
+        eq6 = current.T_d - (self.theta * self.W * current.N_s)
 
         # Eq 7: Consumption function with wealth effect
-        eq7 = C_d - (self.c0 * YD + self.c1 * H_h_prev)
+        eq7 = current.C_d - (self.c0 * current.YD + self.c1 * prev.H_h)
 
         # Eq 8: Government budget constraint
-        eq8 = H_s - (H_s_prev + self.g0 - T_d)
+        eq8 = current.H_s - (prev.H_s + self.g0 - current.T_d)
 
         # Eq 9: Household budget constraint
-        eq9 = H_h - (H_h_prev + YD - C_d)
+        eq9 = current.H_h - (prev.H_h + current.YD - current.C_d)
 
         # Eqs 10-11: National income identity
-        eq10 = Y - (C_s + G_s)
-        eq11 = N_d - (Y / self.W)
+        eq10 = current.Y - (current.C_s + current.G_s)
+        eq11 = current.N_d - (current.Y / self.W)
 
         return [eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11]
 
+    def update(self):
+        """Update model state by one time period.
+
+        Override base class to convert solution back to State namedtuple.
+        """
+        initial_guess = self.x[-1]
+        solution = fsolve(self._equations, initial_guess)
+        # Convert solution array back to named tuple for readable storage
+        self.x.append(self.State(*solution))
 
     def get_results(self):
-        """Return results as a dictionary of time series.
+        """Return results as a pandas DataFrame for analysis.
 
         Returns:
-            Dictionary mapping variable names to numpy arrays of their values over time
+            pandas.DataFrame with columns for each variable and rows for time periods
         """
-        arr = np.array(self.x[1:])  # Skip initial zeros
-        return {
-            'Y': arr[:, 0],    # National income
-            'YD': arr[:, 1],   # Disposable income
-            'T_d': arr[:, 2],  # Tax demand
-            'T_s': arr[:, 3],  # Tax supply
-            'H_s': arr[:, 4],  # Government money supply
-            'H_h': arr[:, 5],  # Household money holdings
-            'G_s': arr[:, 6],  # Government spending supply
-            'C_s': arr[:, 7],  # Consumption supply
-            'C_d': arr[:, 8],  # Consumption demand
-            'N_s': arr[:, 9],  # Employment supply
-            'N_d': arr[:, 10]  # Employment demand
-        }
+        # Convert list of namedtuples to DataFrame (skip initial zeros)
+        # This is the "conversion to DataFrame" part of the hybrid pattern
+        return pd.DataFrame([s._asdict() for s in self.x[1:]])
 
 
 if __name__ == "__main__":
@@ -92,25 +113,31 @@ if __name__ == "__main__":
     # Run simulation for 100 periods
     results = model.simulate(periods=100)
 
-    # Display final period results
+    # Display final period results (results is now a DataFrame!)
     print("SIM Model - Final Period Results (t=100)")
     print("=" * 45)
-    print(f"National Income (Y):       {results['Y'][-1]:>10.2f}")
-    print(f"Disposable Income (YD):    {results['YD'][-1]:>10.2f}")
-    print(f"Consumption (C):           {results['C_d'][-1]:>10.2f}")
-    print(f"Government Spending (G):   {results['G_s'][-1]:>10.2f}")
-    print(f"Taxes (T):                 {results['T_d'][-1]:>10.2f}")
-    print(f"Household Wealth (H_h):    {results['H_h'][-1]:>10.2f}")
-    print(f"Government Debt (H_s):     {results['H_s'][-1]:>10.2f}")
-    print(f"Employment (N):            {results['N_d'][-1]:>10.2f}")
+    print(f"National Income (Y):       {results['Y'].iloc[-1]:>10.2f}")
+    print(f"Disposable Income (YD):    {results['YD'].iloc[-1]:>10.2f}")
+    print(f"Consumption (C):           {results['C_d'].iloc[-1]:>10.2f}")
+    print(f"Government Spending (G):   {results['G_s'].iloc[-1]:>10.2f}")
+    print(f"Taxes (T):                 {results['T_d'].iloc[-1]:>10.2f}")
+    print(f"Household Wealth (H_h):    {results['H_h'].iloc[-1]:>10.2f}")
+    print(f"Government Debt (H_s):     {results['H_s'].iloc[-1]:>10.2f}")
+    print(f"Employment (N):            {results['N_d'].iloc[-1]:>10.2f}")
     print()
 
-    # Check if model has reached steady state
-    y_change = abs(results['Y'][-1] - results['Y'][-2])
+    # Check if model has reached steady state (using DataFrame methods)
+    y_change = abs(results["Y"].iloc[-1] - results["Y"].iloc[-2])
     if y_change < 0.01:
         print(f"Model has converged to steady state (ΔY = {y_change:.4f})")
     else:
         print(f"Model still adjusting (ΔY = {y_change:.4f})")
+
+    # Demonstrate DataFrame benefits
+    print(
+        f"\nDataFrame shape: {results.shape[0]} periods x {results.shape[1]} variables"
+    )
+    print("Available methods: .diff(), .pct_change(), .plot(), .to_csv(), etc.")
 
     # Demonstrate plotting functionality
     print("\nGenerating plots...")

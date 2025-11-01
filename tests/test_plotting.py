@@ -1,6 +1,12 @@
 """Tests for Model base class plotting functionality."""
 
-import numpy as np
+import sys
+import os
+
+# Add src/me-sfc to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "me-sfc"))
+
+import pandas as pd
 from model import Model
 
 
@@ -10,19 +16,25 @@ class DummyModel(Model):
     def __init__(self):
         self.simulated = False
 
+    def _equations(self, x):
+        """Dummy equations method (required by abstract base class)."""
+        return [0] * len(x)
+
     def update(self):
         """Dummy update method."""
         self.simulated = True
 
     def get_results(self):
-        """Return dummy results for testing."""
+        """Return dummy results for testing (now returns DataFrame)."""
         if not self.simulated:
-            return {}
-        return {
-            'Variable_A': np.array([1.0, 2.0, 3.0, 4.0, 5.0]),
-            'Variable_B': np.array([5.0, 4.0, 3.0, 2.0, 1.0]),
-            'Variable_C': np.array([2.5, 2.5, 2.5, 2.5, 2.5])
-        }
+            return pd.DataFrame()  # Empty DataFrame instead of empty dict
+        return pd.DataFrame(
+            {
+                "Variable_A": [1.0, 2.0, 3.0, 4.0, 5.0],
+                "Variable_B": [5.0, 4.0, 3.0, 2.0, 1.0],
+                "Variable_C": [2.5, 2.5, 2.5, 2.5, 2.5],
+            }
+        )
 
 
 def test_plot_requires_results():
@@ -47,7 +59,7 @@ def test_plot_saves_file():
     model.simulated = True
 
     # Create temporary file path
-    with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp_path = tmp.name
 
     try:
@@ -61,7 +73,9 @@ def test_plot_saves_file():
         assert os.path.exists(tmp_path), "Plot file was not created"
         assert os.path.getsize(tmp_path) > 0, "Plot file is empty"
 
-        print(f"✓ Test passed: plot() saves file successfully ({os.path.getsize(tmp_path)} bytes)")
+        print(
+            f"✓ Test passed: plot() saves file successfully ({os.path.getsize(tmp_path)} bytes)"
+        )
     finally:
         # Clean up
         if os.path.exists(tmp_path):
