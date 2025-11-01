@@ -1,41 +1,7 @@
 # Model SIM
 # Simplest Model with Government Money
 
-# The model has 11 equations, 11 unknowns, and 3 exogenous variables
-# Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d
-# Exogenous variables: G_d, theta, W
-
-# Whatever is demanded (services, taxes, and labour) is always supplied
-# within the period:
-# C_s = C_d
-# G_s = G_d
-# T_s = T_d
-# N_s = N_d
-
-# Diposable income:
-# YD = W * N_s - T_s
-
-# Taxes:
-# T_d = theta * W * N_s, where theta < 1
-
-# Consumption:
-# C_d = c0 * YD + c1 * H_h[-1]
-
-# Budget constraint of government:
-# \Delta H_s = H_s - H_s[-1] = G_d - T_d
-# H_s = H_s[-1] + G_d - T_d
-
-# Budget constraint of households:
-# \Delta H_h = H_h - H_h[-1] = YD - C_d
-# H_h = H_h[-1] + YD - C_d
-
-# National income identity
-# Y = C_s + G_s
-# Y = W * N_d
-# N_d = Y / W
-
 import numpy as np
-from scipy.optimize import fsolve
 from model import Model
 
 
@@ -50,47 +16,47 @@ class SIM(Model):
 
         self.x = [np.zeros(11)]  # solution vector
 
-    def update(self):
-        """Update for one time step."""
-
-        # Define the system of equations
-        def f(x):
-            Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d = x
-
-            H_h_prev = self.x[-1][5]
-            H_s_prev = self.x[-1][4]
-
-            eq1 = C_s - C_d
-            eq2 = G_s - self.g0
-            eq3 = T_s - T_d
-            eq4 = N_s - N_d
-            eq5 = YD - (self.W * N_s - T_s)
-            eq6 = T_d - (self.theta * self.W * N_s)
-            eq7 = C_d - (self.c0 * YD + self.c1 * H_h_prev)
-            eq8 = H_s - (H_s_prev + self.g0 - T_d)
-            eq9 = H_h - (H_h_prev + YD - C_d)
-            eq10 = Y - (C_s + G_s)
-            eq11 = N_d - (Y / self.W)
-
-            return [eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11]
-
-        initial_guess = self.x[-1]
-
-        Y = fsolve(f, initial_guess)
-        self.x.append(Y)
-
-    def simulate(self, periods):
-        """Run the model for multiple periods.
+    def _equations(self, x):
+        """System of 11 equations for the SIM model.
 
         Args:
-            periods: Number of time periods to simulate
+            x: Solution vector [Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d]
 
         Returns:
-            Dictionary of time series for all variables
+            List of 11 residuals that should equal zero at equilibrium
         """
-        for _ in range(periods):
-            self.update()
-        return self.get_results()
+        Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d = x
+
+        H_h_prev = self.x[-1][5]
+        H_s_prev = self.x[-1][4]
+
+        # Eqs 1-4: Whatever is demanded is supplied in the period
+        eq1 = C_s - C_d
+        eq2 = G_s - self.g0
+        eq3 = T_s - T_d
+        eq4 = N_s - N_d
+
+        # Eq 5: Disposable income is wages minus taxes
+        eq5 = YD - (self.W * N_s - T_s)
+
+        # Eq 6: Taxes demanded are a proportion of wages
+        eq6 = T_d - (self.theta * self.W * N_s)
+
+        # Eq 7: Consumption function with wealth effect
+        eq7 = C_d - (self.c0 * YD + self.c1 * H_h_prev)
+
+        # Eq 8: Government budget constraint
+        eq8 = H_s - (H_s_prev + self.g0 - T_d)
+
+        # Eq 9: Household budget constraint
+        eq9 = H_h - (H_h_prev + YD - C_d)
+
+        # Eqs 10-11: National income identity
+        eq10 = Y - (C_s + G_s)
+        eq11 = N_d - (Y / self.W)
+
+        return [eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11]
+
 
     def get_results(self):
         """Return results as a dictionary of time series.

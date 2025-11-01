@@ -4,18 +4,37 @@ from abc import ABC, abstractmethod
 import os
 from math import ceil
 import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
 
 
 class Model(ABC):
     """Abstract base class for SFC models.
 
     All SFC models should inherit from this class and implement:
+    - _equations(x): Define the system of equations as residuals
     - get_results(): Return dictionary of time series data
 
+    Subclasses must initialize:
+    - self.x: List of solution vectors (state history)
+
     The base class provides:
+    - update(): Solves equations and updates state
     - plot(): Visualize results with automatic subplot layout
     - simulate(): Default implementation (can be overridden)
     """
+
+    @abstractmethod
+    def _equations(self, x):
+        """Define the system of equations for this model.
+
+        Args:
+            x: Current guess for solution vector (numpy array or list)
+
+        Returns:
+            List of residuals that should equal zero at equilibrium.
+            Each equation should be expressed as: expression - target = 0
+        """
+        pass
 
     @abstractmethod
     def get_results(self):
@@ -27,15 +46,15 @@ class Model(ABC):
         """
         pass
 
-    @abstractmethod
     def update(self):
         """Update model state by one time period.
 
-        This method should:
-        - Solve the system of equations for the current period
-        - Update internal state with new values
+        Solves the system of equations using the previous period's solution
+        as the initial guess, then appends the new solution to state history.
         """
-        pass
+        initial_guess = self.x[-1]
+        solution = fsolve(self._equations, initial_guess)
+        self.x.append(solution)
 
     def simulate(self, periods):
         """Run the model for multiple periods.
