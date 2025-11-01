@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 from collections import namedtuple
-from model import Model
+from .model import Model
 
 
 class SIM(Model):
