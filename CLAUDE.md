@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a stock-flow consistent (SFC) macroeconomic modeling project implemented in Python. The project implements formal economic models as systems of simultaneous equations that are solved numerically using scipy's `fsolve` nonlinear solver.
+This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. Models are systems of simultaneous equations solved numerically using scipy's `fsolve` nonlinear solver.
 
 ## Development Commands
 
@@ -14,94 +14,103 @@ This is a stock-flow consistent (SFC) macroeconomic modeling project implemented
 # Install dependencies
 uv sync
 
-# Run the main script
-uv run python main.py
+# Run individual models directly
+uv run python -m me_sfc.sim
+uv run python -m me_sfc.simex
 
-# Run the SIM model
-uv run python sim.py
+# Run tests
+uv run pytest tests/
+uv run python tests/test_plotting.py  # Run specific test file
 ```
 
 ## Architecture
 
-### Model Structure
+### Hybrid Pattern: Namedtuples + Lists
 
-The codebase follows a class-based architecture where each economic model is implemented as a separate class:
-
-- **sim.py**: Contains the `SIM` class (Simplest Model with Government Money)
-  - Models a closed economy with government, households, and 11 endogenous variables
-  - Uses 11 simultaneous equations to determine equilibrium values each period
-  - Implements dynamic simulation via the `update()` method
-
-### SIM Model Design Pattern
-
-Each model class follows this pattern:
-
-1. **Initialization (`__init__`)**:
-   - Sets exogenous parameters (constants like tax rates, propensities to consume)
-   - Initializes solution vector `self.x` as a list of arrays, where `self.x[-1]` contains previous period values
-
-2. **Update Method (`update()`)**:
-   - Defines a nested function `f(x)` containing the system of equations
-   - Each equation is expressed as a residual that should equal zero at equilibrium
-   - Accesses lagged values via `self.x[-1]` (e.g., `H_h_prev = self.x[-1][5]`)
-   - Uses `fsolve` with previous period solution as initial guess
-   - Appends new solution to `self.x` history
-
-### Key Implementation Details
-
-- **Solution Storage**: Solutions are stored as a list of numpy arrays, enabling time-series analysis and access to lagged variables
-- **Equation Formulation**: All equations are written as residuals (expression - target = 0) for the nonlinear solver
-- **Variable Ordering**: Variables must maintain consistent ordering across the solution vector (e.g., in SIM: Y, YD, T_d, T_s, H_s, H_h, G_s, C_s, C_d, N_s, N_d)
-
-## Model Equations
-
-Each model file contains detailed comments documenting:
-- Number of equations and unknowns
-- Exogenous (policy/parameter) variables
-- Behavioral equations (consumption, investment, etc.)
-- Accounting identities (budget constraints, national income identity)
-- Market clearing conditions
-
-These comments are essential for understanding and extending the models.
-
-## Dependencies
-
-- **numpy**: Array operations and numerical computing
-- **scipy**: Nonlinear equation solving (`fsolve`)
-
-## Plotting Functionality
-
-All models inherit from the `Model` base class in `model.py`, which provides automatic plotting capabilities.
-
-### Usage
+Models use a **hybrid data structure** combining namedtuples for type safety with lists for time-series storage:
 
 ```python
-# Run simulation
-model = SIM(c0=0.6, c1=0.4, theta=0.2, g0=20, W=1)
-results = model.simulate(periods=100)
+# Define state structure (class-level)
+State = namedtuple('State', ['Y', 'C', 'I', ...])
 
-# Display plots interactively
-model.plot()
+# Initialize with list of States
+self.x = [self.State(*np.zeros(n))]
 
-# Save plots to file
-model.plot(save_path="figures/results.png", show=False)
+# Access in equations
+current = self.State(*x)  # Current period (being solved)
+prev = self.x[-1]         # Previous period (from history)
 
-# Both display and save
-model.plot(save_path="figures/results.png", show=True)
+# Readable variable access (no magic indices!)
+eq = current.C - (self.c0 * current.Y + self.c1 * prev.H)
 ```
 
-### Plot Features
+**Why this pattern**:
+- Namedtuples provide readable variable access (e.g., `current.Y` instead of `x[0]`)
+- Lists enable time-series storage and access to lagged variables
+- Type safety: prevents index errors and makes equations self-documenting
 
-- Automatic subplot grid layout (up to 3 columns)
-- One subplot per variable showing time series evolution
-- Grid lines and clear axis labels
-- High-resolution output (300 DPI) for saved figures
-- Supports PNG, PDF, SVG formats (detected from file extension)
+### Model Base Class
+
+All models inherit from `Model` (src/me_sfc/model.py) and must implement:
+
+1. **Class-level State namedtuple**: Defines the model's state structure
+2. **`_equations(x)`**: System of equations as residuals that should equal zero
+
+The base class provides:
+- `update()`: Solves equations using fsolve and converts solution to State namedtuple
+- `get_results()`: Converts State history to pandas DataFrame
+- `simulate(periods)`: Runs multiple periods and returns results DataFrame
+- `plot()`: Automatic visualization with subplot grid layout
+
+### Equation Formulation Rules
+
+1. **All equations are residuals**: Write as `expression - target = 0`
+   ```python
+   eq1 = current.C_s - current.C_d  # Supply equals demand
+   eq2 = current.Y - (current.C + current.G)  # Income identity
+   ```
+
+2. **Access previous period via `prev`**: Use `self.x[-1]` for lagged variables
+   ```python
+   prev = self.x[-1]
+   eq = current.H - (prev.H + current.Y - current.C)  # Wealth accumulation
+   ```
+
+3. **Unpack solution using State**: Convert numpy array to namedtuple
+   ```python
+   current = self.State(*x)
+   ```
 
 ### Creating New Models
 
-New models should inherit from `Model` and implement:
-- `update()`: Update state for one time step
-- `get_results()`: Return dictionary mapping variable names to numpy arrays
+```python
+from me_sfc.model import Model
+from collections import namedtuple
+import numpy as np
+import pandas as pd
 
-Plotting functionality is inherited automatically.
+class YourModel(Model):
+    # 1. Define state structure
+    State = namedtuple('State', ['Y', 'C', 'I', ...])
+
+    # 2. Initialize parameters and state
+    def __init__(self, param1, param2):
+        self.param1 = param1
+        self.x = [self.State(*np.zeros(n))]
+
+    # 3. Define system of equations
+    def _equations(self, x):
+        current = self.State(*x)
+        prev = self.x[-1]
+        # Return list of residuals
+        return [eq1, eq2, ...]
+
+    # get_results() is inherited from base class
+```
+
+## Existing Models
+
+- **SIM** (src/me_sfc/sim.py): Simplest model with government money - 11 equations, 11 unknowns
+- **SIMEX** (src/me_sfc/simex.py): SIM with expectations - 13 equations, 13 unknowns
+
+Each model file documents its equations, exogenous parameters, and behavioral assumptions in comments.
