@@ -1,13 +1,7 @@
 """Tests for Model base class plotting functionality."""
 
-import sys
-import os
-
-# Add src/me-sfc to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src", "me-sfc"))
-
 import pandas as pd
-from model import Model
+from me_sfc.model import Model
 
 
 class DummyModel(Model):
