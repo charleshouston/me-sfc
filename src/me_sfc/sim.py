@@ -4,7 +4,7 @@
 import numpy as np
 import pandas as pd
 from collections import namedtuple
-from .model import Model
+from me_sfc.model import Model
 
 
 class SIM(Model):
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     # Run simulation for 100 periods
     results = model.simulate(periods=100)
 
-    # Display final period results (results is now a DataFrame!)
+    # Display final period results
     print("SIM Model - Final Period Results (t=100)")
     print("=" * 45)
     print(f"National Income (Y):       {results['Y'].iloc[-1]:>10.2f}")
@@ -115,18 +115,12 @@ if __name__ == "__main__":
     print(f"Employment (N):            {results['N_d'].iloc[-1]:>10.2f}")
     print()
 
-    # Check if model has reached steady state (using DataFrame methods)
+    # Check if model has reached steady state
     y_change = abs(results["Y"].iloc[-1] - results["Y"].iloc[-2])
     if y_change < 0.01:
         print(f"Model has converged to steady state (ΔY = {y_change:.4f})")
     else:
         print(f"Model still adjusting (ΔY = {y_change:.4f})")
-
-    # Demonstrate DataFrame benefits
-    print(
-        f"\nDataFrame shape: {results.shape[0]} periods x {results.shape[1]} variables"
-    )
-    print("Available methods: .diff(), .pct_change(), .plot(), .to_csv(), etc.")
 
     # Demonstrate plotting functionality
     print("\nGenerating plots...")
