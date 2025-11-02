@@ -79,16 +79,6 @@ class SIM(Model):
 
         return [eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11]
 
-    def get_results(self):
-        """Return results as a pandas DataFrame for analysis.
-
-        Returns:
-            pandas.DataFrame with columns for each variable and rows for time periods
-        """
-        # Convert list of namedtuples to DataFrame (skip initial zeros)
-        # This is the "conversion to DataFrame" part of the hybrid pattern
-        return pd.DataFrame([s._asdict() for s in self.x[1:]])
-
 
 if __name__ == "__main__":
     # Standard calibration from Godley & Lavoie

@@ -13,7 +13,6 @@ class Model(ABC):
 
     All SFC models should inherit from this class and implement:
     - _equations(x): Define the system of equations as residuals
-    - get_results(): Return pandas DataFrame of time series data
 
     Subclasses must define:
     - State: Class-level namedtuple defining the model's state structure
@@ -31,11 +30,9 @@ class Model(ABC):
                 prev = self.x[-1]
                 # Use current.Y, prev.C, etc.
 
-            def get_results(self):
-                return pd.DataFrame([s._asdict() for s in self.x[1:]])
-
     The base class provides:
     - update(): Solves equations and converts solution to State namedtuple
+    - get_results(): Converts State history to pandas DataFrame
     - plot(): Visualize results with automatic subplot layout
     - simulate(): Default implementation (can be overridden)
     """
@@ -53,9 +50,10 @@ class Model(ABC):
         """
         pass
 
-    @abstractmethod
     def get_results(self):
         """Return results as a pandas DataFrame for analysis.
+
+        Converts the list of State namedtuples to a DataFrame (skipping initial zeros).
 
         Returns:
             pandas.DataFrame with columns for each variable and rows for each time period.
@@ -63,7 +61,7 @@ class Model(ABC):
         Example:
             DataFrame with columns ['Y', 'C', 'I', ...] where each row is a time period
         """
-        pass
+        return pd.DataFrame([s._asdict() for s in self.x[1:]])
 
     def update(self):
         """Update model state by one time period.
