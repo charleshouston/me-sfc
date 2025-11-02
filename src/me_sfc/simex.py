@@ -2,9 +2,9 @@
 # Model SIM with Expectations
 
 import numpy as np
-import pandas as pd
 from collections import namedtuple
 from me_sfc.model import Model
+
 
 class SIMEX(Model):
     # State
@@ -24,7 +24,7 @@ class SIMEX(Model):
             "C_d",  # Consumption demand
             "N_s",  # Employment supply
             "N_d",  # Employment demand
-        ]
+        ],
     )
 
     def __init__(self, c0, c1, theta, g0, W):

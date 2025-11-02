@@ -2,7 +2,6 @@
 # Simplest Model with Government Money
 
 import numpy as np
-import pandas as pd
 from collections import namedtuple
 from me_sfc.model import Model
 
