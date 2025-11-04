@@ -5,6 +5,7 @@
 from me_sfc.model import Model
 from collections import namedtuple
 import numpy as np
+import pandas as pd
 
 
 class PC(Model):
@@ -115,6 +116,79 @@ class PC(Model):
         eq10 = current.B_cb - (current.B_s - current.B_h)
 
         return np.array([eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10])
+
+    def get_balance_sheet(self, period=-1):
+        """Generate the balance sheet matrix for a specific period.
+
+        The balance sheet matrix shows assets (+) and liabilities (-) for each sector.
+        Each row (asset type) must sum to zero to satisfy accounting consistency.
+
+        Args:
+            period: Time period to display (default -1 for last period).
+                   Period 0 is first simulated period (x[1] in state history).
+
+        Returns:
+            pandas.DataFrame with sectors as columns and asset types as rows.
+            Includes a SUM column to verify accounting identity (should be ~0).
+
+        Raises:
+            ValueError: If no simulation results exist (only initial state).
+        """
+        # Check if simulation has been run
+        if len(self.x) <= 1:
+            raise ValueError(
+                "No simulation results available. Run simulate() first."
+            )
+
+        # Get state at specified period
+        # x[0] is initial state, x[1] is period 0, x[2] is period 1, etc.
+        state = self.x[period] if period == -1 else self.x[period + 1]
+
+        # Build balance sheet matrix
+        # Rows: asset types, Columns: sectors
+        data = {
+            "Households": [
+                state.H_h,  # Money held by households (asset)
+                state.B_h,  # Bills held by households (asset)
+            ],
+            "Government": [
+                0.0,  # Government doesn't hold money
+                -state.B_s,  # Bills issued by government (liability)
+            ],
+            "Central Bank": [
+                -state.H_s,  # Money supplied by CB (liability)
+                state.B_cb,  # Bills held by CB (asset)
+            ],
+        }
+
+        index = ["Money (H)", "Bills (B)"]
+        df = pd.DataFrame(data, index=index)
+
+        # Add SUM column to verify accounting identity
+        df["SUM"] = df.sum(axis=1)
+
+        return df
+
+    def print_balance_sheet(self, period=-1):
+        """Print the balance sheet matrix in a readable format.
+
+        Args:
+            period: Time period to display (default -1 for last period).
+        """
+        bs = self.get_balance_sheet(period=period)
+
+        # Determine which period we're showing
+        if period == -1:
+            period_label = len(self.x) - 2  # -1 for initial state, -1 for 0-indexing
+        else:
+            period_label = period
+
+        print(f"\nBalance Sheet Matrix - Period {period_label}")
+        print("=" * 70)
+        print(bs.to_string(float_format=lambda x: f"{x:>12.4f}"))
+        print("=" * 70)
+        print("Note: Assets are positive (+), Liabilities are negative (-)")
+        print("      Each row should sum to approximately zero.\n")
 
 
 if __name__ == "__main__":
