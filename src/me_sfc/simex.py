@@ -86,6 +86,27 @@ class SIMEX(Model):
 
         return [eq1, eq2, eq3, eq4, eq5, eq6, eq7, eq8, eq9, eq10, eq11, eq12, eq13]
 
+    def _balance_sheet_structure(self, state):
+        """Define balance sheet structure for the SIMEX model.
+
+        Args:
+            state: State namedtuple for a specific period
+
+        Returns:
+            dict with 'assets' and 'sectors' keys defining the balance sheet structure
+        """
+        return {
+            'assets': ["Money (H)"],
+            'sectors': {
+                "Households": [
+                    state.H_h,  # Money held by households (asset)
+                ],
+                "Government": [
+                    -state.H_s,  # Money supplied by government (liability)
+                ],
+            }
+        }
+
 
 if __name__ == "__main__":
     # Standard calibration
