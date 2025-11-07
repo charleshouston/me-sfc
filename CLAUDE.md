@@ -6,9 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. Models are systems of simultaneous equations solved numerically using scipy's `fsolve` nonlinear solver.
 
-**Two Approaches Available**:
-1. **Config-based models** (RECOMMENDED): Define models in simple text files (`models/*.txt`)
-2. **Class-based models**: Define models as Python classes (legacy, still supported)
+**Models are defined in simple text configuration files** (`models/*.txt`) that specify equations, parameters, exogenous variables, and initial values.
 
 ## Development Commands
 
@@ -21,21 +19,16 @@ uv sync
 # Install package in editable mode (required for imports to work)
 uv pip install -e .
 
-# Run config-based models (RECOMMENDED)
+# Run all models
 uv run python examples/run_config_models.py
-
-# Run class-based models (legacy)
-uv run python -m me_sfc.sim
-uv run python -m me_sfc.simex
-uv run python -m me_sfc.pc
 
 # Run tests
 uv run pytest tests/
 ```
 
-## Config-Based Models (RECOMMENDED)
+## Config-Based Models
 
-The **ConfigModel** class allows you to define models using simple text configuration files. This is the preferred approach for new models.
+The **ConfigModel** class allows you to define models using simple text configuration files.
 
 ### Quick Start
 
@@ -93,101 +86,27 @@ h = 0
 
 **Example**: See `examples/run_config_models.py` for complete usage examples.
 
-## Architecture (Class-Based Models)
+## Implementation Details
 
-### Hybrid Pattern: Namedtuples + Lists
+### Internal Architecture
 
-Models use a **hybrid data structure** combining namedtuples for type safety with lists for time-series storage:
+The ConfigModel class uses a hybrid pattern internally:
+- **Namedtuples** for type-safe state management (readable variable access)
+- **Lists** for time-series storage and lagged variable access
+- **Restricted namespace** for safe equation evaluation
 
-```python
-# Define state structure (class-level)
-State = namedtuple('State', ['Y', 'C', 'I', ...])
-
-# Initialize with list of States
-self.x = [self.State(*np.zeros(n))]
-
-# Access in equations
-current = self.State(*x)  # Current period (being solved)
-prev = self.x[-1]         # Previous period (from history)
-
-# Readable variable access (no magic indices!)
-eq = current.C - (self.c0 * current.Y + self.c1 * prev.H)
-```
-
-**Why this pattern**:
-- Namedtuples provide readable variable access (e.g., `current.Y` instead of `x[0]`)
-- Lists enable time-series storage and access to lagged variables
-- Type safety: prevents index errors and makes equations self-documenting
+Variables are automatically detected from equation left-hand sides and converted to a State namedtuple. The `var(-1)` lag notation is converted to dictionary lookups before evaluation.
 
 ### Model Base Class
 
-All models inherit from `Model` (src/me_sfc/model.py) and must implement:
-
-1. **Class-level State namedtuple**: Defines the model's state structure
-2. **`_equations(x)`**: System of equations as residuals that should equal zero
-
-The base class provides:
-- `update()`: Solves equations using fsolve and converts solution to State namedtuple
-- `get_results()`: Converts State history to pandas DataFrame
-- `simulate(periods)`: Runs multiple periods and returns results DataFrame
+ConfigModel inherits from the abstract `Model` base class (src/me_sfc/model.py), which provides:
+- `update()`: Solves equations using scipy's fsolve
+- `get_results()`: Converts state history to pandas DataFrame
+- `simulate(periods)`: Runs multiple periods
 - `plot()`: Automatic visualization with subplot grid layout
 
-### Equation Formulation Rules
+## Available Models
 
-1. **All equations are residuals**: Write as `expression - target = 0`
-   ```python
-   eq1 = current.C_s - current.C_d  # Supply equals demand
-   eq2 = current.Y - (current.C + current.G)  # Income identity
-   ```
-
-2. **Access previous period via `prev`**: Use `self.x[-1]` for lagged variables
-   ```python
-   prev = self.x[-1]
-   eq = current.H - (prev.H + current.Y - current.C)  # Wealth accumulation
-   ```
-
-3. **Unpack solution using State**: Convert numpy array to namedtuple
-   ```python
-   current = self.State(*x)
-   ```
-
-### Creating New Models
-
-```python
-from me_sfc.model import Model
-from collections import namedtuple
-import numpy as np
-import pandas as pd
-
-class YourModel(Model):
-    # 1. Define state structure
-    State = namedtuple('State', ['Y', 'C', 'I', ...])
-
-    # 2. Initialize parameters and state
-    def __init__(self, param1, param2):
-        self.param1 = param1
-        self.x = [self.State(*np.zeros(n))]
-
-    # 3. Define system of equations
-    def _equations(self, x):
-        current = self.State(*x)
-        prev = self.x[-1]
-        # Return list of residuals
-        return [eq1, eq2, ...]
-
-    # get_results() is inherited from base class
-```
-
-## Existing Models
-
-### Config-Based (RECOMMENDED)
 - **SIM** (`models/sim.txt`): Simplest model with government money - 11 equations
 - **SIMEX** (`models/simex.txt`): SIM with expectations - 13 equations
 - **PC** (`models/pc.txt`): Portfolio choice model - 10 equations
-
-### Class-Based (Legacy)
-- **SIM** (`src/me_sfc/sim.py`): Simplest model with government money - 11 equations
-- **SIMEX** (`src/me_sfc/simex.py`): SIM with expectations - 13 equations
-- **PC** (`src/me_sfc/pc.py`): Portfolio choice model - 10 equations
-
-Both approaches produce identical results. Config-based models are easier to create and modify.
