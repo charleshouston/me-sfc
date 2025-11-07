@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. Models are systems of simultaneous equations solved numerically using scipy's `fsolve` nonlinear solver.
 
+**Two Approaches Available**:
+1. **Config-based models** (RECOMMENDED): Define models in simple text files (`models/*.txt`)
+2. **Class-based models**: Define models as Python classes (legacy, still supported)
+
 ## Development Commands
 
 **Package Manager**: This project uses `uv` for Python package management.
@@ -14,16 +18,82 @@ This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. 
 # Install dependencies
 uv sync
 
-# Run individual models directly
+# Install package in editable mode (required for imports to work)
+uv pip install -e .
+
+# Run config-based models (RECOMMENDED)
+uv run python examples/run_config_models.py
+
+# Run class-based models (legacy)
 uv run python -m me_sfc.sim
 uv run python -m me_sfc.simex
+uv run python -m me_sfc.pc
 
 # Run tests
 uv run pytest tests/
-uv run python tests/test_plotting.py  # Run specific test file
 ```
 
-## Architecture
+## Config-Based Models (RECOMMENDED)
+
+The **ConfigModel** class allows you to define models using simple text configuration files. This is the preferred approach for new models.
+
+### Quick Start
+
+```python
+from me_sfc.config_model import ConfigModel
+
+# Load and run a model
+model = ConfigModel(config_path="models/sim.txt")
+results = model.simulate(periods=100)
+model.plot()
+```
+
+### Config File Format
+
+Config files use section markers (`######`) to organize model specifications:
+
+```
+###### Equations
+y = c + g
+yd = y - t
+c = c0 * yd + c1 * h(-1)
+h = h(-1) + yd - c
+t = theta * y
+
+###### Parameters
+c0 = 0.6
+c1 = 0.4
+theta = 0.2
+
+###### Exogenous
+g = 20
+
+###### Initial
+y = 0
+h = 0
+```
+
+**Key Features**:
+- **Lag notation**: Use `var(-1)` to reference previous period values
+- **Automatic variable detection**: Variables extracted from equation left-hand sides
+- **Safe evaluation**: Restricted namespace prevents malicious code
+- **All Model features**: Inherits `simulate()`, `plot()`, `get_results()` from base class
+
+### Available Config Models
+
+- `models/sim.txt`: Simplest model with government money (11 equations)
+- `models/simex.txt`: SIM with expectations (13 equations)
+- `models/pc.txt`: Portfolio choice model (10 equations)
+
+### Creating New Config Models
+
+1. Create a new `.txt` file in `models/` directory
+2. Define sections: Equations, Parameters, Exogenous, Initial
+3. Load with `ConfigModel(config_path="models/your_model.txt")`
+
+**Example**: See `examples/run_config_models.py` for complete usage examples.
+
+## Architecture (Class-Based Models)
 
 ### Hybrid Pattern: Namedtuples + Lists
 
@@ -110,7 +180,14 @@ class YourModel(Model):
 
 ## Existing Models
 
-- **SIM** (src/me_sfc/sim.py): Simplest model with government money - 11 equations, 11 unknowns
-- **SIMEX** (src/me_sfc/simex.py): SIM with expectations - 13 equations, 13 unknowns
+### Config-Based (RECOMMENDED)
+- **SIM** (`models/sim.txt`): Simplest model with government money - 11 equations
+- **SIMEX** (`models/simex.txt`): SIM with expectations - 13 equations
+- **PC** (`models/pc.txt`): Portfolio choice model - 10 equations
 
-Each model file documents its equations, exogenous parameters, and behavioral assumptions in comments.
+### Class-Based (Legacy)
+- **SIM** (`src/me_sfc/sim.py`): Simplest model with government money - 11 equations
+- **SIMEX** (`src/me_sfc/simex.py`): SIM with expectations - 13 equations
+- **PC** (`src/me_sfc/pc.py`): Portfolio choice model - 10 equations
+
+Both approaches produce identical results. Config-based models are easier to create and modify.
