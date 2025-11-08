@@ -6,6 +6,7 @@ from simple text configuration files rather than requiring separate Python class
 
 import re
 import numpy as np
+import tomllib
 from collections import namedtuple
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
@@ -61,6 +62,11 @@ class ConfigModel(Model):
             config_path = Path(config_path)
             if not config_path.exists():
                 raise FileNotFoundError(f"Config file not found: {config_path}")
+
+            # Validate file extension
+            if config_path.suffix != '.toml':
+                raise ValueError(f"Config must be .toml file, got {config_path.suffix}")
+
             config_text = config_path.read_text()
 
         # Parse configuration
@@ -99,78 +105,46 @@ class ConfigModel(Model):
         ]
 
     def _parse_config(self, config_text: str) -> Dict[str, Any]:
-        """Parse config file into sections.
+        """Parse TOML config into sections.
 
         Args:
-            config_text: Full config file content
+            config_text: Full config file content (TOML format)
 
         Returns:
-            Dictionary with keys: equations, parameters, exogenous, initial
+            Dictionary with keys: equations, parameters, exogenous, initial, metadata
 
         Raises:
-            ValueError: If config is malformed
+            ValueError: If config is malformed or missing required sections
         """
+        try:
+            config = tomllib.loads(config_text)
+        except tomllib.TOMLDecodeError as e:
+            raise ValueError(f"Invalid TOML syntax: {e}")
+
+        # Validate required sections
+        if 'equations' not in config:
+            raise ValueError("Config must have [equations] section")
+
         sections = {
             'equations': [],
-            'parameters': {},
-            'exogenous': {},
-            'initial': {}
+            'parameters': config.get('parameters', {}),
+            'exogenous': config.get('exogenous', {}),
+            'initial': config.get('initial', {}),
+            'metadata': config.get('metadata', {})
         }
 
-        current_section = None
-        line_num = 0
+        # Convert equations dict to list of "var = expr" strings
+        # This preserves the rest of the code that expects this format
+        for var, expr in config['equations'].items():
+            sections['equations'].append(f"{var} = {expr}")
 
-        for line in config_text.split('\n'):
-            line_num += 1
-            line = line.strip()
-
-            # Skip empty lines
-            if not line:
-                continue
-
-            # Check for section headers
-            if line.startswith('######') or line.startswith('##'):
-                line_lower = line.lower()
-                if 'equation' in line_lower:
-                    current_section = 'equations'
-                elif 'parameter' in line_lower:
-                    current_section = 'parameters'
-                elif 'exogenous' in line_lower:
-                    current_section = 'exogenous'
-                elif 'initial' in line_lower or 'starting' in line_lower:
-                    current_section = 'initial'
-                continue
-
-            # Skip other comments
-            if line.startswith('#'):
-                continue
-
-            # Parse content based on current section
-            if current_section == 'equations':
-                if '=' in line:
-                    sections['equations'].append(line)
-                else:
-                    raise ValueError(f"Line {line_num}: Equation must contain '=' : {line}")
-
-            elif current_section in ['parameters', 'exogenous', 'initial']:
-                if '=' in line:
-                    try:
-                        var, value = line.split('=', 1)
-                        var = var.strip()
-                        value = value.strip()
-
-                        # Validate variable name
-                        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', var):
-                            raise ValueError(f"Line {line_num}: Invalid variable name: {var}")
-
-                        # Parse value
-                        value = float(value)
-                        sections[current_section][var] = value
-                    except ValueError as e:
-                        raise ValueError(f"Line {line_num}: Cannot parse '{line}': {e}")
-
-        if not sections['equations']:
-            raise ValueError("No equations found in config")
+        # Validate numeric values
+        for section_name in ['parameters', 'exogenous', 'initial']:
+            for key, value in sections[section_name].items():
+                if not isinstance(value, (int, float)):
+                    raise ValueError(
+                        f"[{section_name}] {key} must be numeric, got {type(value).__name__}"
+                    )
 
         return sections
 
