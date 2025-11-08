@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from me_sfc.config_model import ConfigModel
+from me_sfc.model import Model
 
 
 def test_toml_valid_config():
@@ -22,7 +22,7 @@ def test_toml_valid_config():
     y = 0.0
     c = 0.0
     """
-    model = ConfigModel(config_text=config_text)
+    model = Model(config_text=config_text)
     assert len(model._var_names) == 2
     assert 'y' in model._var_names
     assert 'c' in model._var_names
@@ -37,7 +37,7 @@ def test_toml_missing_equations_section():
     alpha = 0.8
     """
     with pytest.raises(ValueError, match="must have \\[equations\\] section"):
-        ConfigModel(config_text=config_text)
+        Model(config_text=config_text)
 
 
 def test_toml_invalid_syntax():
@@ -47,7 +47,7 @@ def test_toml_invalid_syntax():
     y = "c + g"
     """
     with pytest.raises(ValueError, match="Invalid TOML syntax"):
-        ConfigModel(config_text=config_text)
+        Model(config_text=config_text)
 
 
 def test_toml_non_numeric_parameter():
@@ -60,12 +60,12 @@ def test_toml_non_numeric_parameter():
     alpha = "not a number"
     """
     with pytest.raises(ValueError, match="must be numeric"):
-        ConfigModel(config_text=config_text)
+        Model(config_text=config_text)
 
 
 def test_toml_sim_file_loads():
     """SIM TOML file loads correctly."""
-    model = ConfigModel(config_path="models/sim.toml")
+    model = Model(config_path="models/sim.toml")
     assert len(model._var_names) == 11
     assert model._parameters['c0'] == 0.6
     assert model._exogenous['g0'] == 20.0
@@ -73,14 +73,14 @@ def test_toml_sim_file_loads():
 
 def test_toml_simex_file_loads():
     """SIMEX TOML file loads correctly."""
-    model = ConfigModel(config_path="models/simex.toml")
+    model = Model(config_path="models/simex.toml")
     assert len(model._var_names) == 13
     assert model._parameters['c0'] == 0.6
 
 
 def test_toml_pc_file_loads():
     """PC TOML file loads correctly."""
-    model = ConfigModel(config_path="models/pc.toml")
+    model = Model(config_path="models/pc.toml")
     assert len(model._var_names) == 10
     assert model._parameters['b0'] == 0.4
     assert model._exogenous['r0'] == 0.025
