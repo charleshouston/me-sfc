@@ -1,0 +1,40 @@
+[metadata]
+name = "PC"
+description = "Portfolio Choice Model"
+reference = "Godley & Lavoie (2007)"
+
+[equations]
+Y = "C + g0"
+YD = "Y - T + r0 * B_h(-1)"
+T = "theta * (Y + r0 * B_h(-1))"
+V = "V(-1) + YD - C"
+C = "c0 * YD + c1 * V(-1)"
+B_h = "V * (b0 + b1 * r0) - b2 * YD"
+H_h = "V - B_h"
+B_s = "B_s(-1) + (g0 + r0 * B_s(-1)) - (T + r0 * B_cb(-1))"
+H_s = "H_s(-1) + B_cb - B_cb(-1)"
+B_cb = "B_s - B_h"
+
+[parameters]
+c0 = 0.6
+c1 = 0.4
+b0 = 0.4
+b1 = 0.2
+b2 = 0.1
+theta = 0.2
+
+[exogenous]
+g0 = 20.0
+r0 = 0.025
+
+[initial]
+Y = 86.48648648648648
+YD = 86.48648648648648
+T = 17.297297297297298
+V = 86.48648648648648
+C = 66.48648648648648
+B_h = 64.86486486486487
+H_h = 21.62162162162162
+B_s = 86.48648648648648
+H_s = 21.62162162162162
+B_cb = 21.62162162162162
