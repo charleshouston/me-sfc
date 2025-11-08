@@ -1,0 +1,39 @@
+[metadata]
+name = "SIM"
+description = "Simplest Model with Government Money"
+reference = "Godley & Lavoie (2007)"
+
+[equations]
+C_s = "C_d"
+G_s = "g0"
+T_s = "T_d"
+N_s = "N_d"
+YD = "W * N_s - T_s"
+T_d = "theta * W * N_s"
+C_d = "c0 * YD + c1 * H_h(-1)"
+H_s = "H_s(-1) + g0 - T_d"
+H_h = "H_h(-1) + YD - C_d"
+Y = "C_s + G_s"
+N_d = "Y / W"
+
+[parameters]
+c0 = 0.6
+c1 = 0.4
+theta = 0.2
+
+[exogenous]
+g0 = 20.0
+W = 1.0
+
+[initial]
+Y = 0.0
+YD = 0.0
+T_d = 0.0
+T_s = 0.0
+H_s = 0.0
+H_h = 0.0
+G_s = 0.0
+C_s = 0.0
+C_d = 0.0
+N_s = 0.0
+N_d = 0.0
