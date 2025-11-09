@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. Models are systems of simultaneous equations solved numerically using scipy's `fsolve` nonlinear solver.
 
-**Models are defined in simple text configuration files** (`models/*.txt`) that specify equations, parameters, exogenous variables, and initial values.
+**Models are defined in TOML configuration files** (`models/*.toml`) that specify equations, parameters, exogenous variables, and initial values.
 
 ## Development Commands
 
@@ -28,61 +28,65 @@ uv run pytest tests/
 
 ## Config-Based Models
 
-The **ConfigModel** class allows you to define models using simple text configuration files.
+The **Model** class allows you to define models using TOML configuration files.
 
 ### Quick Start
 
 ```python
-from me_sfc.config_model import ConfigModel
+from me_sfc.model import Model
 
 # Load and run a model
-model = ConfigModel(config_path="models/sim.txt")
+model = Model(config_path="models/sim.toml")
 results = model.simulate(periods=100)
 model.plot()
 ```
 
 ### Config File Format
 
-Config files use section markers (`######`) to organize model specifications:
+Config files use TOML format with standard sections:
 
-```
-###### Equations
-y = c + g
-yd = y - t
-c = c0 * yd + c1 * h(-1)
-h = h(-1) + yd - c
-t = theta * y
+```toml
+[metadata]
+name = "SIM"
+description = "Simplest model with government money"
 
-###### Parameters
+[equations]
+y = "c + g"
+yd = "y - t"
+c = "c0 * yd + c1 * h(-1)"
+h = "h(-1) + yd - c"
+t = "theta * y"
+
+[parameters]
 c0 = 0.6
 c1 = 0.4
 theta = 0.2
 
-###### Exogenous
-g = 20
+[exogenous]
+g = 20.0
 
-###### Initial
-y = 0
-h = 0
+[initial]
+y = 0.0
+h = 0.0
 ```
 
 **Key Features**:
+- **Standard TOML**: Uses Python stdlib tomllib parser
 - **Lag notation**: Use `var(-1)` to reference previous period values
-- **Automatic variable detection**: Variables extracted from equation left-hand sides
-- **Safe evaluation**: Restricted namespace prevents malicious code
+- **Sections**: equations, parameters, exogenous, initial, metadata (optional)
 - **All Model features**: Inherits `simulate()`, `plot()`, `get_results()` from base class
 
 ### Available Config Models
 
-- `models/sim.txt`: Simplest model with government money (11 equations)
-- `models/simex.txt`: SIM with expectations (13 equations)
-- `models/pc.txt`: Portfolio choice model (10 equations)
+- `models/sim.toml`: Simplest model with government money (11 equations)
+- `models/simex.toml`: SIM with expectations (13 equations)
+- `models/pc.toml`: Portfolio choice model (10 equations)
 
 ### Creating New Config Models
 
-1. Create a new `.txt` file in `models/` directory
-2. Define sections: Equations, Parameters, Exogenous, Initial
-3. Load with `ConfigModel(config_path="models/your_model.txt")`
+1. Create a new `.toml` file in `models/` directory
+2. Define sections: equations, parameters, exogenous, initial
+3. Load with `Model(config_path="models/your_model.toml")`
 
 **Example**: See `examples/run_config_models.py` for complete usage examples.
 
@@ -90,16 +94,16 @@ h = 0
 
 ### Internal Architecture
 
-The ConfigModel class uses a hybrid pattern internally:
+The Model class uses a hybrid pattern internally:
 - **Namedtuples** for type-safe state management (readable variable access)
 - **Lists** for time-series storage and lagged variable access
-- **Restricted namespace** for safe equation evaluation
+- **TOML parsing** using Python's stdlib tomllib parser
 
-Variables are automatically detected from equation left-hand sides and converted to a State namedtuple. The `var(-1)` lag notation is converted to dictionary lookups before evaluation.
+Variables are automatically detected from equation keys in the TOML file and converted to a State namedtuple. The `var(-1)` lag notation is converted to dictionary lookups before evaluation.
 
-### Model Base Class
+### Core Methods
 
-ConfigModel inherits from the abstract `Model` base class (src/me_sfc/model.py), which provides:
+The Model class provides:
 - `update()`: Solves equations using scipy's fsolve
 - `get_results()`: Converts state history to pandas DataFrame
 - `simulate(periods)`: Runs multiple periods
@@ -107,6 +111,6 @@ ConfigModel inherits from the abstract `Model` base class (src/me_sfc/model.py),
 
 ## Available Models
 
-- **SIM** (`models/sim.txt`): Simplest model with government money - 11 equations
-- **SIMEX** (`models/simex.txt`): SIM with expectations - 13 equations
-- **PC** (`models/pc.txt`): Portfolio choice model - 10 equations
+- **SIM** (`models/sim.toml`): Simplest model with government money - 11 equations
+- **SIMEX** (`models/simex.toml`): SIM with expectations - 13 equations
+- **PC** (`models/pc.toml`): Portfolio choice model - 10 equations

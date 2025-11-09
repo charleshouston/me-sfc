@@ -4,7 +4,7 @@ A Python framework for building and simulating Stock-Flow Consistent macroeconom
 
 ## Features
 
-- **Config-based model definition**: Define models in simple text files without writing Python code
+- **Config-based model definition**: Define models in TOML files without writing Python code
 - **Automatic equation solving**: Uses scipy's fsolve for robust numerical solutions
 - **Time-series simulation**: Track variables over multiple periods
 - **Automatic plotting**: Built-in visualization with subplot grids
@@ -26,10 +26,10 @@ uv pip install -e .
 ### Running Models
 
 ```python
-from me_sfc.config_model import ConfigModel
+from me_sfc.model import Model
 
 # Load model from config file
-model = ConfigModel(config_path="models/sim.txt")
+model = Model(config_path="models/sim.toml")
 
 # Simulate 100 periods
 results = model.simulate(periods=100)
@@ -52,47 +52,51 @@ uv run python examples/run_config_models.py
 ### SIM - Simplest Model with Government Money
 - 11 equations, 11 unknowns
 - Demonstrates government money creation and household wealth accumulation
-- Config: `models/sim.txt`
+- Config: `models/sim.toml`
 
 ### SIMEX - SIM with Expectations
 - 13 equations, 13 unknowns
 - Adds adaptive expectations to the SIM model
-- Config: `models/simex.txt`
+- Config: `models/simex.toml`
 
 ### PC - Portfolio Choice
 - 10 equations, 10 unknowns
 - Agents choose between holding money and interest-bearing bills
-- Config: `models/pc.txt`
+- Config: `models/pc.toml`
 
 ## Creating New Models
 
-Create a text file in `models/` directory:
+Create a TOML file in `models/` directory:
 
-```
-###### Equations
-y = c + g
-yd = y - t
-c = c0 * yd + c1 * h(-1)
-h = h(-1) + yd - c
-t = theta * y
+```toml
+[metadata]
+name = "Your Model"
+description = "Model description"
 
-###### Parameters
+[equations]
+y = "c + g"
+yd = "y - t"
+c = "c0 * yd + c1 * h(-1)"
+h = "h(-1) + yd - c"
+t = "theta * y"
+
+[parameters]
 c0 = 0.6
 c1 = 0.4
 theta = 0.2
 
-###### Exogenous
-g = 20
+[exogenous]
+g = 20.0
 
-###### Initial
-y = 0
-h = 0
+[initial]
+y = 0.0
+h = 0.0
 ```
 
 Then load and run:
 
 ```python
-model = ConfigModel(config_path="models/your_model.txt")
+model = Model(config_path="models/your_model.toml")
 results = model.simulate(periods=100)
 ```
 
