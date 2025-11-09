@@ -4,7 +4,7 @@ This demonstrates how to use the ConfigModel class to load and simulate
 models defined in simple text configuration files.
 """
 
-from me_sfc.config_model import ConfigModel
+from me_sfc.model import Model
 from pathlib import Path
 
 
@@ -15,7 +15,7 @@ def run_sim_model():
     print("=" * 70)
 
     # Load model from config file
-    model = ConfigModel(config_path="models/sim.txt")
+    model = Model(config_path="models/sim.toml")
 
     # Display model info
     print(model.get_config_info())
@@ -53,7 +53,7 @@ def run_simex_model():
     print("=" * 70)
 
     # Load model
-    model = ConfigModel(config_path="models/simex.txt")
+    model = Model(config_path="models/simex.toml")
 
     print(f"\n{model}")
     print(f"Variables: {', '.join(model._var_names)}")
@@ -91,7 +91,7 @@ def run_pc_model():
     print("=" * 70)
 
     # Load model
-    model = ConfigModel(config_path="models/pc.txt")
+    model = Model(config_path="models/pc.toml")
 
     print(f"\n{model}")
     print(f"Variables: {', '.join(model._var_names)}")
@@ -125,9 +125,9 @@ def compare_models():
     print("=" * 70)
 
     # Run all models
-    sim_model, sim_results = ConfigModel(config_path="models/sim.txt"), None
-    simex_model, simex_results = ConfigModel(config_path="models/simex.txt"), None
-    pc_model, pc_results = ConfigModel(config_path="models/pc.txt"), None
+    sim_model, sim_results = Model(config_path="models/sim.toml"), None
+    simex_model, simex_results = Model(config_path="models/simex.toml"), None
+    pc_model, pc_results = Model(config_path="models/pc.toml"), None
 
     sim_results = sim_model.simulate(periods=100)
     simex_results = simex_model.simulate(periods=100)
