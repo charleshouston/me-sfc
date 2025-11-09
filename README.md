@@ -103,7 +103,6 @@ results = model.simulate(periods=100)
 ## Documentation
 
 - **CLAUDE.md**: Detailed development guide and architecture documentation
-- **DESIGN_ANALYSIS.md**: Design decisions and approach comparison
 - **examples/**: Example scripts demonstrating usage
 
 ## Testing
