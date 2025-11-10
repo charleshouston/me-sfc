@@ -18,29 +18,29 @@ from typing import Dict, List, Tuple, Any
 
 
 class Model:
-    """Universal SFC model that reads specifications from config files.
+    """Universal SFC model that reads specifications from TOML config files.
 
-    This class allows economists to define models using simple text files
+    This class allows economists to define models using standard TOML files
     with equations, parameters, and initial values, without writing Python code.
 
-    Example config file format:
-        ###### Equations
-        y = c + g
-        yd = y - t
-        c = c0 * yd + c1 * h(-1)
+    Example config file format (TOML):
+        [equations]
+        y = "c + g"
+        yd = "y - t"
+        c = "c0 * yd + c1 * h(-1)"
 
-        ###### Parameters
+        [parameters]
         c0 = 0.6
         c1 = 0.4
 
-        ###### Exogenous
-        g = 20
+        [exogenous]
+        g = 20.0
 
-        ###### Initial
-        h = 0
+        [initial]
+        h = 0.0
 
     Features:
-    - Simple text format with section markers (######)
+    - Standard TOML format using Python stdlib tomllib parser
     - Lag notation: var(-1) for previous period values
     - Automatic variable detection and State namedtuple creation
     - Safe evaluation with restricted namespace
