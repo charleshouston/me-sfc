@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. Models are systems of simultaneous equations solved numerically using scipy's `fsolve` nonlinear solver.
 
+**Models are defined in TOML configuration files** (`models/*.toml`) that specify equations, parameters, exogenous variables, and initial values.
+
 ## Development Commands
 
 **Package Manager**: This project uses `uv` for Python package management.
@@ -14,103 +16,101 @@ This is a stock-flow consistent (SFC) macroeconomic modeling project in Python. 
 # Install dependencies
 uv sync
 
-# Run individual models directly
-uv run python -m me_sfc.sim
-uv run python -m me_sfc.simex
+# Install package in editable mode (required for imports to work)
+uv pip install -e .
+
+# Run all models
+uv run python examples/run_config_models.py
 
 # Run tests
 uv run pytest tests/
-uv run python tests/test_plotting.py  # Run specific test file
 ```
 
-## Architecture
+## Config-Based Models
 
-### Hybrid Pattern: Namedtuples + Lists
+The **Model** class allows you to define models using TOML configuration files.
 
-Models use a **hybrid data structure** combining namedtuples for type safety with lists for time-series storage:
-
-```python
-# Define state structure (class-level)
-State = namedtuple('State', ['Y', 'C', 'I', ...])
-
-# Initialize with list of States
-self.x = [self.State(*np.zeros(n))]
-
-# Access in equations
-current = self.State(*x)  # Current period (being solved)
-prev = self.x[-1]         # Previous period (from history)
-
-# Readable variable access (no magic indices!)
-eq = current.C - (self.c0 * current.Y + self.c1 * prev.H)
-```
-
-**Why this pattern**:
-- Namedtuples provide readable variable access (e.g., `current.Y` instead of `x[0]`)
-- Lists enable time-series storage and access to lagged variables
-- Type safety: prevents index errors and makes equations self-documenting
-
-### Model Base Class
-
-All models inherit from `Model` (src/me_sfc/model.py) and must implement:
-
-1. **Class-level State namedtuple**: Defines the model's state structure
-2. **`_equations(x)`**: System of equations as residuals that should equal zero
-
-The base class provides:
-- `update()`: Solves equations using fsolve and converts solution to State namedtuple
-- `get_results()`: Converts State history to pandas DataFrame
-- `simulate(periods)`: Runs multiple periods and returns results DataFrame
-- `plot()`: Automatic visualization with subplot grid layout
-
-### Equation Formulation Rules
-
-1. **All equations are residuals**: Write as `expression - target = 0`
-   ```python
-   eq1 = current.C_s - current.C_d  # Supply equals demand
-   eq2 = current.Y - (current.C + current.G)  # Income identity
-   ```
-
-2. **Access previous period via `prev`**: Use `self.x[-1]` for lagged variables
-   ```python
-   prev = self.x[-1]
-   eq = current.H - (prev.H + current.Y - current.C)  # Wealth accumulation
-   ```
-
-3. **Unpack solution using State**: Convert numpy array to namedtuple
-   ```python
-   current = self.State(*x)
-   ```
-
-### Creating New Models
+### Quick Start
 
 ```python
 from me_sfc.model import Model
-from collections import namedtuple
-import numpy as np
-import pandas as pd
 
-class YourModel(Model):
-    # 1. Define state structure
-    State = namedtuple('State', ['Y', 'C', 'I', ...])
-
-    # 2. Initialize parameters and state
-    def __init__(self, param1, param2):
-        self.param1 = param1
-        self.x = [self.State(*np.zeros(n))]
-
-    # 3. Define system of equations
-    def _equations(self, x):
-        current = self.State(*x)
-        prev = self.x[-1]
-        # Return list of residuals
-        return [eq1, eq2, ...]
-
-    # get_results() is inherited from base class
+# Load and run a model
+model = Model(config_path="models/sim.toml")
+results = model.simulate(periods=100)
+model.plot()
 ```
 
-## Existing Models
+### Config File Format
 
-- **SIM** (src/me_sfc/sim.py): Simplest model with government money - 11 equations, 11 unknowns
-- **SIMEX** (src/me_sfc/simex.py): SIM with expectations - 13 equations, 13 unknowns
+Config files use TOML format with standard sections:
 
-Each model file documents its equations, exogenous parameters, and behavioral assumptions in comments.
+```toml
+[metadata]
+name = "SIM"
+description = "Simplest model with government money"
+
+[equations]
+y = "c + g"
+yd = "y - t"
+c = "c0 * yd + c1 * h(-1)"
+h = "h(-1) + yd - c"
+t = "theta * y"
+
+[parameters]
+c0 = 0.6
+c1 = 0.4
+theta = 0.2
+
+[exogenous]
+g = 20.0
+
+[initial]
+y = 0.0
+h = 0.0
+```
+
+**Key Features**:
+- **Standard TOML**: Uses Python stdlib tomllib parser
+- **Lag notation**: Use `var(-1)` to reference previous period values
+- **Sections**: equations, parameters, exogenous, initial, metadata (optional)
+- **All Model features**: Inherits `simulate()`, `plot()`, `get_results()` from base class
+
+### Available Config Models
+
+- `models/sim.toml`: Simplest model with government money (11 equations)
+- `models/simex.toml`: SIM with expectations (13 equations)
+- `models/pc.toml`: Portfolio choice model (10 equations)
+
+### Creating New Config Models
+
+1. Create a new `.toml` file in `models/` directory
+2. Define sections: equations, parameters, exogenous, initial
+3. Load with `Model(config_path="models/your_model.toml")`
+
+**Example**: See `examples/run_config_models.py` for complete usage examples.
+
+## Implementation Details
+
+### Internal Architecture
+
+The Model class uses a hybrid pattern internally:
+- **Namedtuples** for type-safe state management (readable variable access)
+- **Lists** for time-series storage and lagged variable access
+- **TOML parsing** using Python's stdlib tomllib parser
+
+Variables are automatically detected from equation keys in the TOML file and converted to a State namedtuple. The `var(-1)` lag notation is converted to dictionary lookups before evaluation.
+
+### Core Methods
+
+The Model class provides:
+- `update()`: Solves equations using scipy's fsolve
+- `get_results()`: Converts state history to pandas DataFrame
+- `simulate(periods)`: Runs multiple periods
+- `plot()`: Automatic visualization with subplot grid layout
+
+## Available Models
+
+- **SIM** (`models/sim.toml`): Simplest model with government money - 11 equations
+- **SIMEX** (`models/simex.toml`): SIM with expectations - 13 equations
+- **PC** (`models/pc.toml`): Portfolio choice model - 10 equations
